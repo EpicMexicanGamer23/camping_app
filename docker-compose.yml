@@ -1,0 +1,41 @@
+services:
+
+  trips:
+    build:
+      context: ./services/trips
+    ports:
+      - "8000:8000"
+    depends_on:
+      - database
+
+  gear_list:
+    build:
+      context: ./services/gear_list
+    ports:
+      - "8001:8000"
+    depends_on:
+      - trips
+      - database
+  
+  reminders:
+    build:
+      context: ./services/reminders
+    ports:
+      - "8002:8000"
+    depends_on:
+      - trips
+      - gear_list
+      - database
+
+
+  database:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: microservices
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: apppassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
