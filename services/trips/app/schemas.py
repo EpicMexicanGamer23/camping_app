@@ -1,4 +1,4 @@
-from datetime import date, datetime 
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel

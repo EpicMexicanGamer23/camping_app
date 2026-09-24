@@ -1,10 +1,12 @@
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-#database is the docker compose service name
 DATABASE_URL = (
     "postgresql+psycopg://"
-    "appuser:apppassword@database:5432/microservices"
+    f"{os.getenv('POSTGRES_USER', 'appuser')}:{os.getenv('POSTGRES_PASSWORD', 'apppassword')}@"
+    f"{os.getenv('DATABASE_HOST', 'database')}:5432/{os.getenv('POSTGRES_DB', 'microservices')}"
 )
 
 engine = create_engine(DATABASE_URL)

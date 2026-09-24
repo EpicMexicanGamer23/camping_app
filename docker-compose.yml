@@ -3,37 +3,38 @@ services:
   trips:
     build:
       context: ./services/trips
+    env_file:
+      - storage.env
     ports:
       - "8000:8000"
     depends_on:
       - database
 
-  gear_list:
+  gear:
     build:
-      context: ./services/gear_list
+      context: ./services/gear
+    env_file:
+      - storage.env
     ports:
       - "8001:8000"
     depends_on:
-      - trips
       - database
-  
+
   reminders:
     build:
       context: ./services/reminders
+    env_file:
+      - storage.env
     ports:
       - "8002:8000"
     depends_on:
       - trips
-      - gear_list
-      - database
-
+      - gear
 
   database:
     image: postgres:17
-    environment:
-      POSTGRES_DB: microservices
-      POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: apppassword
+    env_file:
+      - storage.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

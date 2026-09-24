@@ -1,4 +1,6 @@
-from sqlalchemy import String, Text
+import datetime
+
+from sqlalchemy import Date, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -17,13 +19,13 @@ class Trip(Base):
         nullable=False,
     )
 
-    start_date: Mapped[str] = mapped_column(
-        String(10),
+    start_date: Mapped[datetime.date] = mapped_column(
+        Date,
         nullable=False,
     )
 
-    end_date: Mapped[str] = mapped_column(
-        String(10),
+    end_date: Mapped[datetime.date] = mapped_column(
+        Date,
         nullable=False,
     )
 

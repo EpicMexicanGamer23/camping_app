@@ -3,6 +3,7 @@
 #API communication between python moduls
 from datetime import datetime
 from typing import Annotated, TypeAlias
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy import select
@@ -86,8 +87,8 @@ def update_trip(
             detail="Trip not found",
         )
 
-    today = datetime.datetime.now(tz=...).date()
-    if ((trip_data.start_date > trip_data.end_date) or (trip_data < today)):
+    today = datetime.now(tz=ZoneInfo("Europe/Stockholm")).date()
+    if trip_data.start_date > trip_data.end_date or trip_data.start_date < today:
         raise HTTPException(
             status_code=400,
             detail="Incorrect date input",
