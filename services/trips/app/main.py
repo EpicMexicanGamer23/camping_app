@@ -1,6 +1,3 @@
-#import httpx #used for communication between containers
-
-#API communication between python moduls
 from datetime import datetime
 from typing import Annotated, TypeAlias
 from zoneinfo import ZoneInfo
@@ -23,10 +20,12 @@ app = FastAPI(
 Base.metadata.create_all(bind=engine)
 #Change this later for database migrations (e.g. Alembic) after initial architecture is set
 
+#Establishes connection to database (SessionLocal) and yields it to the route handler. 
+# Closes the session after the request is completed.
 DatabaseSession: TypeAlias = Annotated[Session, Depends(get_db)]
 
 
-#Create a trip
+"""Add a new trip"""
 @app.post("/trips", response_model=TripResponse)
 def create_trip(
     trip: TripCreate,
@@ -38,6 +37,19 @@ def create_trip(
         end_date=trip.end_date,
         description=trip.description,
     )
+    #Validation for location and trip dates
+    if trip.location == "":
+        raise HTTPException(
+            status_code=400,
+            detail="Location cannot be empty",
+        )
+
+    if (trip.start_date > trip.end_date) or (trip.start_date < datetime.now(tz=ZoneInfo("Europe/Stockholm")).date()):
+        raise HTTPException(
+            status_code=400,
+            detail="Incorrect date input: less or greater issue",
+        )
+    
 
     db.add(new_trip)
     db.commit()
@@ -46,22 +58,23 @@ def create_trip(
     return new_trip
 
 
-#Fetch all trips
+"""Return all trips."""
 @app.get("/trips", response_model=list[TripResponse])
 def get_trips(
     db: DatabaseSession,
 ):
+    #Fetches all trips from the database and returns them as a list of TripResponse objects.
     result = db.execute(select(Trip))
-
     return result.scalars().all()
 
 
-#Get one trip
+"""Return a single trip by ID."""
 @app.get("/trips/{trip_id}", response_model=TripResponse)
 def get_trip(
     trip_id: int,
     db: DatabaseSession,
 ):
+    #Fetches a specific trip from the database by its ID and return it as a TripResponse object.
     trip = db.get(Trip, trip_id)
 
     if trip is None:
@@ -72,23 +85,28 @@ def get_trip(
 
     return trip
 
-#Update one trip
+"""Update an existing trip."""
 @app.put("/trips/{trip_id}", response_model=TripResponse)
 def update_trip(
     trip_id: int,
     trip_data: TripCreate,
     db: DatabaseSession,
 ):
+    #Fetches a specific trip from the database by its ID and return it as a TripResponse object.
     trip = db.get(Trip, trip_id)
 
+    #Validation for trip id, location and trip dates
     if trip is None:
         raise HTTPException(
             status_code=404,
             detail="Trip not found",
         )
-
-    today = datetime.now(tz=ZoneInfo("Europe/Stockholm")).date()
-    if trip_data.start_date > trip_data.end_date or trip_data.start_date < today:
+    if trip_data.location == "":
+        raise HTTPException(
+            status_code=400,
+            detail="Location cannot be empty",
+        )
+    if (trip_data.start_date > trip.end_date) or (trip_data.start_date < datetime.now(tz=ZoneInfo("Europe/Stockholm")).date()):
         raise HTTPException(
             status_code=400,
             detail="Incorrect date input",
@@ -104,12 +122,13 @@ def update_trip(
 
     return trip
 
-#Delete an trip
+"""Delete a trip by ID"""
 @app.delete("/trips/{trip_id}")
 def delete_trip(
     trip_id: int,
     db: DatabaseSession,
 ):
+    #Fetches a specific trip from the database by its ID and return a delete message.
     trip = db.get(Trip, trip_id)
 
     if trip is None:

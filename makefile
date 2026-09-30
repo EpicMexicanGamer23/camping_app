@@ -10,6 +10,10 @@ docker-compose:
 docker-compose-down:
 	docker compose down
 
+db-test:
+	docker compose exec database psql -U appuser -d microservices
+#remember: appuser and microservices are set in the storage.env file, must match
+
 ruff:
 	ruff check --fix
 

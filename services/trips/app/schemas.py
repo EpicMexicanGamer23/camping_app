@@ -8,7 +8,7 @@ class TripCreate(BaseModel):
     location: str = "London"
     start_date: date = datetime.now(tz=ZoneInfo("Europe/Stockholm")).date()
     end_date: date = datetime.now(tz=ZoneInfo("Europe/Stockholm")).date()
-    description: str | None = None
+    description: str | None = ""
 
 class TripResponse(BaseModel):
     id: int

@@ -1,13 +1,13 @@
 import datetime
 
-from sqlalchemy import Date, ForeignKey, Integer, String
+from sqlalchemy import Date, ForeignKey, Integer, PrimaryKeyConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
 
 
 class Gear(Base):
-    """Individual gear item — the primary entity exposed via /gear endpoints."""
+    """Individual gear item - the primary entity exposed via /gear endpoints."""
 
     __tablename__ = "gear_items"
 
@@ -32,7 +32,7 @@ class Gear(Base):
         nullable=False,
     )
 
-    # Relevant when status == "borrowed" — the date the gear must be returned
+    # Relevant when status == "borrowed" — the date the gear must be returned (or missing: the date the gear needs to be aquired)
     return_date: Mapped[datetime.date] = mapped_column(
         Date,
         nullable=True,
@@ -48,31 +48,33 @@ class Gear(Base):
 
 class Gear_List(Base):
     """
-    Association table linking gear items to trips (many gear_items → one trip).
+    Association table linking gear items to trips (many gear_items with one trip).
     Stored separately so a trip can have an arbitrary number of gear items.
     """
 
     __tablename__ = "gear_list"
 
-    id: Mapped[int] = mapped_column(
-        primary_key=True,
-        autoincrement=True,
-    )
+    # Composite primary key: (gear_id, trip_id)
+    __table_args__ = (PrimaryKeyConstraint("gear_id", "trip_id"),)
 
-    # Foreign key to gear_items — one row per gear item on the list
+    #{FK gear_id references gear_items.id}
     gear_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("gear_items.id"),
         nullable=False,
     )
 
-    # Trip ID (no FK because trips live in a separate service/database)
+    #Trips are managed by a separate application service: no DB-level foreign key 
+    # constraint is enforced here to keep services independently deployable.
     trip_id: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
     )
 
-    gear: Mapped["Gear"] = relationship("Gear", back_populates="gear_list_entries")
+    gear: Mapped["Gear"] = relationship(
+        "Gear", 
+        back_populates="gear_list_entries"
+    )
 
 
 
