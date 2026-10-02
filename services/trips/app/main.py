@@ -106,7 +106,7 @@ def update_trip(
             status_code=400,
             detail="Location cannot be empty",
         )
-    if (trip_data.start_date > trip.end_date) or (trip_data.start_date < datetime.now(tz=ZoneInfo("Europe/Stockholm")).date()):
+    if (trip_data.start_date > trip_data.end_date) or (trip_data.start_date < datetime.now(tz=ZoneInfo("Europe/Stockholm")).date()):
         raise HTTPException(
             status_code=400,
             detail="Incorrect date input",

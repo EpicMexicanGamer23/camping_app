@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import Date, ForeignKey, Integer, PrimaryKeyConstraint, String
+from sqlalchemy import Date, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -54,21 +54,21 @@ class Gear_List(Base):
 
     __tablename__ = "gear_list"
 
-    # Composite primary key: (gear_id, trip_id)
-    __table_args__ = (PrimaryKeyConstraint("gear_id", "trip_id"),)
+    # Composite primary key: both columns marked primary_key=True
+    # SQLAlchemy automatically treats multiple primary_key=True columns as a composite PK.
 
     #{FK gear_id references gear_items.id}
     gear_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("gear_items.id"),
-        nullable=False,
+        primary_key=True,
     )
 
     #Trips are managed by a separate application service: no DB-level foreign key 
     # constraint is enforced here to keep services independently deployable.
     trip_id: Mapped[int] = mapped_column(
         Integer,
-        nullable=False,
+        primary_key=True,
     )
 
     gear: Mapped["Gear"] = relationship(

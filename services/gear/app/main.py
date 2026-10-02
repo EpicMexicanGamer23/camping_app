@@ -1,5 +1,7 @@
 import os
 from typing import Annotated, TypeAlias
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException
@@ -52,15 +54,12 @@ def create_gear(gear: GearCreate, db: DatabaseSession):
             status_code=400,
             detail="Gear name cannot be empty.",
         )
-    if new_item.status == "owned" and new_item.return_date is not None:
+    if new_item.status == "owned":
+        new_item.return_date = None  # Ensure return_date is null for owned gear
+    if new_item.status in ["borrowed", "missing"] and new_item.return_date <= datetime.now(tz=ZoneInfo("Europe/Stockholm")).date():
         raise HTTPException(
             status_code=400,
-            detail="Return date must be null for gear with status 'owned'.",
-        )
-    if new_item.status in ["borrowed", "missing"] and new_item.return_date is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Return date must be provided for gear with status 'borrowed' or 'missing'.",
+            detail="Return date must be same date or after the current date for gear with status 'borrowed' or 'missing'.",
         )
     
     db.add(new_item)
