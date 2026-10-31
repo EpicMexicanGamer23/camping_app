@@ -56,6 +56,11 @@ def create_gear(gear: GearCreate, db: DatabaseSession):
         )
     if new_item.status == "owned":
         new_item.return_date = None  # Ensure return_date is null for owned gear
+    if new_item.status in ["borrowed", "missing"] and new_item.return_date is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Return date must be provided for gear with status 'borrowed' or 'missing'.",
+        )
     if new_item.status in ["borrowed", "missing"] and new_item.return_date <= datetime.now(tz=ZoneInfo("Europe/Stockholm")).date():
         raise HTTPException(
             status_code=400,
