@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: qfapp-service
+  labels:
+    app: qfapp
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 3000
+    nodePort: 30001
+    protocol: TCP
+  selector:
+    app: qfapp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qfstandalone
+  labels:
+    app: qfapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qfapp
+  template:
+    metadata:
+      labels:
+        app: qfapp
+    spec:
+      containers:
+      - name: qfstandalone
+        image: mickesv/qfstandalone:version1
+        ports:
+        - containerPort: 3000
+---

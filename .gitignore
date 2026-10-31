@@ -18,6 +18,7 @@ htmlcov/
 storage.env
 .env.*
 !.env.example
+!k8s/.env.example
 
 # IDE/editor files
 .vscode/
@@ -40,9 +41,3 @@ Thumbs.db
 
 # Kubernetes local/generated files
 *.secret.yaml
-
-/docs
-*.md
-
-*/k8s
-k8s
