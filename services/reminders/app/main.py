@@ -75,7 +75,9 @@ async def get_reminders():
             next_trip_days = (nearest_date - today).days
             next_trip_name = nearest_trip.get("location")
 
-        # For each future trip fetch its packing list from the gear service
+        # For each future trip fetch its packing list from the gear service.
+        # The gear service returns flat {"trip_id": N, "gear_id": M} entries,
+        # so we fetch each gear item's details individually.
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             for start_date, trip in future_trips:
                 trip_id = trip.get("id")
@@ -89,14 +91,32 @@ async def get_reminders():
                     entries = gear_resp.json()
 
                     for entry in entries:
-                        gear = entry.get("gear", {})
-                        packing_list.append(
-                            {
-                                "gear_id": gear.get("id"),
-                                "name": gear.get("name"),
-                                "status": gear.get("status"),
-                            }
-                        )
+                        gear_id = entry.get("gear_id")
+                        try:
+                            item_resp = await client.get(
+                                f"{GEAR_SERVICE_URL}/gear/{gear_id}"
+                            )
+                            item_resp.raise_for_status()
+                            gear = item_resp.json()
+                            packing_list.append(
+                                {
+                                    "gear_id": gear.get("id"),
+                                    "name": gear.get("name"),
+                                    "status": gear.get("status"),
+                                }
+                            )
+                        except (httpx.HTTPError, ValueError, TypeError, KeyError):
+                            # Individual gear item unavailable — include with ID only
+                            logger.warning(
+                                "Could not fetch gear item %s", gear_id
+                            )
+                            packing_list.append(
+                                {
+                                    "gear_id": gear_id,
+                                    "name": None,
+                                    "status": None,
+                                }
+                            )
                 except (httpx.HTTPError, ValueError, TypeError, KeyError):
                     # Gear list unavailable for this trip — include trip with empty list
                     logger.warning(
