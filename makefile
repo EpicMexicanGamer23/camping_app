@@ -17,6 +17,19 @@ db-test:
 ruff:
 	ruff check --fix
 
+#relevant for minikube usage: minikube start
+k8s-up:
+	kubectl apply -f k8s/
+
+k8s-down:
+	kubectl delete -f k8s/
+
+k8s-forward:
+	kubectl port-forward svc/trips 8000:8000 & 
+	kubectl port-forward svc/gear 8001:8000 & 
+	kubectl port-forward svc/reminders 8002:8000 &
+	wait
+
 #Venv: Python virtual environment - useful for local development
 #source .venv/bin/activate
 # deactivate
