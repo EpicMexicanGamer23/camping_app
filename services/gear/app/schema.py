@@ -42,5 +42,7 @@ class GearListEntryResponse(BaseModel):
 
     trip_id: int
     gear_id: int
+    trip_name: str
+    gear_name: str
 
     model_config = {"from_attributes": True}

@@ -35,6 +35,53 @@ Base.metadata.create_all(bind=engine)
 # Closes the session after the request is completed.
 DatabaseSession: TypeAlias = Annotated[Session, Depends(get_db)]
 
+"""Helper-function to fetch trip name."""
+async def _fetch_trip_name(trip_id: int, client: httpx.AsyncClient) -> str:
+    try:
+        response = await client.get(f"{TRIPS_SERVICE_URL}/trips/{trip_id}")
+        response.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trip {trip_id} not found",
+            ) from e
+        raise HTTPException(
+            status_code=503,
+            detail="Trips service unavailable: cannot verify trip ID",
+        ) from e
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=503,
+            detail="Trips service unavailable: cannot verify trip ID",
+        ) from e
+
+    try:
+        trip_name = response.json().get("location")
+    except (ValueError, AttributeError) as e:
+        raise HTTPException(
+            status_code=502,
+            detail="Trips service returned invalid trip data",
+        ) from e
+    if not isinstance(trip_name, str):
+        raise HTTPException(
+            status_code=502,
+            detail="Trips service returned invalid trip data",
+        )
+    return trip_name
+
+"""Helper function which returns GearListEntryResponse."""
+def _gear_list_entry_response(
+    entry: Gear_List,
+    trip_name: str,
+) -> GearListEntryResponse:
+    return GearListEntryResponse(
+        trip_id=entry.trip_id,
+        gear_id=entry.gear_id,
+        trip_name=trip_name,
+        gear_name=entry.gear.name,
+    )
+
 
 
 """Add a new gear item. Status defaults to 'owned', return_date to null."""
@@ -166,58 +213,64 @@ def delete_gear(gear_id: int, db: DatabaseSession):
 @app.post("/gear-list", response_model=GearListEntryResponse, status_code=201)
 async def add_gear_to_list(entry: GearListEntryCreate, db: DatabaseSession):
     #Validates that gear item exists
-    if db.get(Gear, entry.gear_id) is None:
+    gear = db.get(Gear, entry.gear_id)
+    if gear is None:
         raise HTTPException(
             status_code=404, 
             detail="Gear item not found"
         )
     #Makes a request to the trips service to validate that the trip exists. 
-    try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            response = await client.get(f"{TRIPS_SERVICE_URL}/trips/{entry.trip_id}")
-            response.raise_for_status()
-
-    #Handles exceptions for trip not found or trips service unavailable.
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Trip {entry.trip_id} not found",
-            )
-        else:
-            raise HTTPException(
-                status_code=503,
-                detail="Trips service unavailable: cannot verify trip ID",
-            )
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        trip_name = await _fetch_trip_name(entry.trip_id, client)
 
     #Association table entry is created linking the gear item to the trip. 
     new_entry = Gear_List(
         trip_id=entry.trip_id,
         gear_id=entry.gear_id,
     )
+
     # The new entry is added to the database and returned in the response.
     db.add(new_entry)
     db.commit()
     db.refresh(new_entry)
-    return new_entry
+    return GearListEntryResponse(
+        trip_id=new_entry.trip_id,
+        gear_id=new_entry.gear_id,
+        trip_name=trip_name,
+        gear_name=gear.name,
+    )
 
 
 """Return all gear list entries across all trips."""
 @app.get("/gear-list", response_model=list[GearListEntryResponse])
-def get_full_gear_list(db: DatabaseSession):
+async def get_full_gear_list(db: DatabaseSession):
     #Fetches all gear lists from the database and returns them as lists of GearListEntryResponse objects.
     result = db.execute(select(Gear_List))
-    #Returns with scalars().all() to return all objects as row object for each entry in the gear_list table
-    return result.scalars().all()
+    entries = result.scalars().all()
+    trip_names: dict[int, str] = {}
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        for entry in entries:
+            if entry.trip_id not in trip_names:
+                trip_names[entry.trip_id] = await _fetch_trip_name(entry.trip_id, client)
+
+    return [
+        _gear_list_entry_response(entry, trip_names[entry.trip_id])
+        for entry in entries
+    ]
 
 
 """Returns the gear-list assigned to a specific trip."""
 @app.get("/gear-list/trip/{trip_id}", response_model=list[GearListEntryResponse])
-def get_gear_list_for_trip(trip_id: int, db: DatabaseSession):
+async def get_gear_list_for_trip(trip_id: int, db: DatabaseSession):
     #Fetches a specific gear-list from the database by searching for its trip-id and returns it as list of GearListEntryResponse.
     result = db.execute(select(Gear_List).where(Gear_List.trip_id == trip_id))
-    #Returns with scalars().all() to return a row object for each entry in the gear_list table
-    return result.scalars().all()
+    entries = result.scalars().all()
+    if not entries:
+        return []
+
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        trip_name = await _fetch_trip_name(trip_id, client)
+    return [_gear_list_entry_response(entry, trip_name) for entry in entries]
 
 
 """Remove a gear item from a trip's gear list by composite key (trip_id, gear_id)."""

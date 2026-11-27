@@ -76,8 +76,8 @@ async def get_reminders():
             next_trip_name = nearest_trip.get("location")
 
         # For each future trip fetch its packing list from the gear service.
-        # The gear service returns flat {"trip_id": N, "gear_id": M} entries,
-        # so we fetch each gear item's details individually.
+        # Gear-list entries include trip and gear names, but we fetch each
+        # gear item's status individually.
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             for start_date, trip in future_trips:
                 trip_id = trip.get("id")

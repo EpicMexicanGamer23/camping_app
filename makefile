@@ -27,9 +27,12 @@ k8s-down:
 k8s-forward:
 	kubectl port-forward svc/trips 8000:8000 & 
 	kubectl port-forward svc/gear 8001:8000 & 
-	kubectl port-forward svc/reminders 8002:8000 &
-	wait
+	kubectl port-forward svc/reminders 8002:8000
 
+k8s-forward-stop:
+	pkill -f "kubectl port-forward svc/trips" || true
+	pkill -f "kubectl port-forward svc/gear" || true
+	pkill -f "kubectl port-forward svc/reminders" || true
 #Venv: Python virtual environment - useful for local development
 #source .venv/bin/activate
 # deactivate
